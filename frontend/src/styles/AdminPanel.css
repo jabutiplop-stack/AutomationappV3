@@ -1,0 +1,53 @@
+.admin-panel-container {
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .admin-panel-container h1 {
+    color: #007bff;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  
+  .admin-panel-container h2 {
+    color: #555;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 10px;
+    margin-top: 40px;
+  }
+  
+  .permissions-table-wrapper {
+    overflow-x: auto;
+  }
+  
+  .permissions-table-wrapper table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  
+  .permissions-table-wrapper th,
+  .permissions-table-wrapper td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .permissions-table-wrapper th {
+    background-color: #007bff;
+    color: white;
+    text-transform: uppercase;
+    font-size: 0.9em;
+  }
+  
+  .permissions-table-wrapper tr:nth-child(even) {
+    background-color: #f8f9fa;
+  }
+  
+  .permissions-table-wrapper input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }

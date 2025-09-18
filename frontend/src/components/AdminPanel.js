@@ -10,7 +10,7 @@ const AdminPanel = () => {
     const fetchData = async () => {
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch('http://twoja-domena.pl/api/admin/data', {
+            const response = await fetch('http://cracovautomationhub.pl/api/admin/data', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
