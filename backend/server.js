@@ -21,6 +21,27 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
+// Middleware do weryfikacji tokena i uprawnień
+const verifyToken = (req, res, next) => {
+  const token = req.headers['authorization'];
+  if (!token) return res.status(403).json({ message: 'Brak tokena' });
+
+  try {
+    const decoded = jwt.verify(token.split(' ')[1], process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Nieautoryzowany dostęp' });
+  }
+};
+
+const isAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Brak uprawnień administratora' });
+  }
+  next();
+};
+
 // Endpoint logowania
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
@@ -37,65 +58,75 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ message: 'Nieprawidłowy login lub hasło' });
     }
 
+    let userCards = [];
+    if (user.role === 'admin') {
+      const allCardsResult = await pool.query('SELECT id, name FROM cards');
+      userCards = allCardsResult.rows;
+    } else {
+      const userCardsResult = await pool.query(
+        'SELECT c.id, c.name FROM user_cards uc JOIN cards c ON uc.card_id = c.id WHERE uc.user_id = $1',
+        [user.id]
+      );
+      userCards = userCardsResult.rows;
+    }
+    
+    // Upewnij się, że "Panel Klienta" jest zawsze dostępny dla wszystkich, którzy mają uprawnienia
+    const clientPanel = await pool.query("SELECT id, name FROM cards WHERE name = 'Panel Klienta'");
+    if (clientPanel.rows.length > 0) {
+      const clientPanelCard = clientPanel.rows[0];
+      const hasClientPanel = userCards.some(card => card.id === clientPanelCard.id);
+      if (!hasClientPanel) {
+        userCards.push(clientPanelCard);
+      }
+    }
+
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    res.json({ token, role: user.role });
+    res.json({ token, role: user.role, cards: userCards });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Błąd serwera' });
   }
 });
 
-// Middleware do weryfikacji tokena i uprawnień
-const verifyToken = (req, res, next) => {
-  const token = req.headers['authorization'];
-  if (!token) return res.status(403).send('Brak tokena');
-
+// Endpoint pobierania wszystkich użytkowników i kart (tylko dla admina)
+app.get('/api/admin/data', verifyToken, isAdmin, async (req, res) => {
   try {
-    const decoded = jwt.verify(token.split(' ')[1], process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    res.status(401).send('Nieautoryzowany dostęp');
-  }
-};
+    const usersResult = await pool.query('SELECT id, username, role FROM users');
+    const cardsResult = await pool.query('SELECT id, name FROM cards');
+    const userPermissionsResult = await pool.query('SELECT user_id, card_id FROM user_cards');
 
-const isAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).send('Brak uprawnień administratora');
-  }
-  next();
-};
-
-// Endpoint dodawania użytkownika (tylko dla admina)
-app.post('/api/users', verifyToken, isAdmin, async (req, res) => {
-  const { username, password, role } = req.body;
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await pool.query(
-      'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)',
-      [username, hashedPassword, role]
-    );
-    res.status(201).send('Użytkownik dodany pomyślnie');
+    res.json({
+      users: usersResult.rows,
+      cards: cardsResult.rows,
+      permissions: userPermissionsResult.rows,
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Błąd serwera');
+    res.status(500).json({ message: 'Błąd serwera' });
   }
 });
 
-// Endpoint usuwania użytkownika (tylko dla admina)
-app.delete('/api/users/:id', verifyToken, isAdmin, async (req, res) => {
-  const { id } = req.params;
+// Endpoint dodawania/usuwania uprawnień (tylko dla admina)
+app.post('/api/admin/permissions', verifyToken, isAdmin, async (req, res) => {
+  const { userId, cardId, action } = req.body;
   try {
-    await pool.query('DELETE FROM users WHERE id = $1', [id]);
-    res.send('Użytkownik usunięty pomyślnie');
+    if (action === 'add') {
+      await pool.query('INSERT INTO user_cards (user_id, card_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [userId, cardId]);
+      res.status(201).json({ message: 'Uprawnienie dodane' });
+    } else if (action === 'remove') {
+      await pool.query('DELETE FROM user_cards WHERE user_id = $1 AND card_id = $2', [userId, cardId]);
+      res.json({ message: 'Uprawnienie usunięte' });
+    } else {
+      res.status(400).json({ message: 'Nieprawidłowa akcja' });
+    }
   } catch (err) {
     console.error(err);
-    res.status(500).send('Błąd serwera');
+    res.status(500).json({ message: 'Błąd serwera' });
   }
 });
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../styles/ClientPanel.css'; // Dodaj ten plik CSS
+import '../styles/ClientPanel.css';
 
 const ClientPanel = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -10,7 +10,6 @@ const ClientPanel = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Zapytanie do back-endu
       const response = await fetch('http://twoja-domena.pl/api/login', {
         method: 'POST',
         headers: {
@@ -20,15 +19,12 @@ const ClientPanel = ({ onLogin }) => {
       });
 
       const data = await response.json();
-
       if (response.ok) {
-        // Zalogowano pomyślnie
         localStorage.setItem('token', data.token);
-        onLogin(data.role);
-        alert('Zalogowano pomyślnie!');
+        localStorage.setItem('userCards', JSON.stringify(data.cards));
+        onLogin(data.role, data.cards);
         navigate('/client-panel');
       } else {
-        // Błąd logowania
         alert(data.message);
       }
     } catch (error) {
