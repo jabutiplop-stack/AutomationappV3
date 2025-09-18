@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import '../styles/ClientPanel.css'; // Dodaj ten plik CSS
 
 const ClientPanel = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -9,7 +10,8 @@ const ClientPanel = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
+      // Zapytanie do back-endu
+      const response = await fetch('http://twoja-domena.pl/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -18,38 +20,50 @@ const ClientPanel = ({ onLogin }) => {
       });
 
       const data = await response.json();
+
       if (response.ok) {
+        // Zalogowano pomyślnie
         localStorage.setItem('token', data.token);
         onLogin(data.role);
-        navigate('/client-panel'); // Przekieruj do panelu klienta
+        alert('Zalogowano pomyślnie!');
+        navigate('/client-panel');
       } else {
+        // Błąd logowania
         alert(data.message);
       }
     } catch (error) {
       console.error('Błąd logowania:', error);
-      alert('Wystąpił błąd podczas logowania');
+      alert('Wystąpił błąd podczas logowania. Sprawdź połączenie.');
     }
   };
 
   return (
     <div className="login-form-container">
-      <h2>Panel Logowania</h2>
+      <h2>Panel Klienta</h2>
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Nazwa użytkownika"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Hasło"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button type="submit">Zaloguj</button>
+        <div className="form-group">
+          <label htmlFor="username">Nazwa użytkownika:</label>
+          <input
+            type="text"
+            id="username"
+            placeholder="Wprowadź nazwę użytkownika"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="password">Hasło:</label>
+          <input
+            type="password"
+            id="password"
+            placeholder="Wprowadź hasło"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        <button type="submit" className="login-button">Zaloguj</button>
       </form>
     </div>
   );
