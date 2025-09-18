@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import './App.css'; // Dodaj stylizację
+import './App.css';
 import LandingPage from './components/LandingPage';
 import Contact from './components/Contact';
 import About from './components/About';
@@ -30,26 +30,48 @@ const NavBar = ({ isAuthenticated, onLogout }) => {
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [userCards, setUserCards] = useState([]);
 
-  const handleLogin = (role) => {
+  // Sprawdzanie tokena przy starcie aplikacji
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const cards = JSON.parse(localStorage.getItem('userCards') || '[]');
+    if (token) {
+      setIsAuthenticated(true);
+      setUserCards(cards);
+      // Można dodać tutaj logikę do odczytywania roli z tokena
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      setUserRole(payload.role);
+    }
+  }, []);
+
+  const handleLogin = (role, cards) => {
     setIsAuthenticated(true);
     setUserRole(role);
+    setUserCards(cards);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userCards');
     setIsAuthenticated(false);
     setUserRole(null);
+    setUserCards([]);
   };
 
-  // Komponent do paska bocznego (po zalogowaniu)
   const Sidebar = () => (
     <div className="sidebar">
       <h3>Menu</h3>
       <ul>
-        <li><Link to="/client-panel">Mój Panel</Link></li>
+        {userCards.map(card => (
+          <li key={card.id}>
+            <Link to={`/${card.name.toLowerCase().replace(/\s/g, '-')}`}>{card.name}</Link>
+          </li>
+        ))}
         {userRole === 'admin' && (
-          <li><Link to="/admin-panel">Panel Administratora</Link></li>
+          <li>
+            <Link to="/panel-administratora">Panel Administratora</Link>
+          </li>
         )}
         <li><button onClick={handleLogout}>Wyloguj</button></li>
       </ul>
@@ -66,10 +88,20 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/client-panel" element={<ClientPanel onLogin={handleLogin} />} />
+            <Route
+              path="/panel-klienta"
+              element={isAuthenticated ? <div>Treść Panelu Klienta (po zalogowaniu)</div> : <ClientPanel onLogin={handleLogin} />}
+            />
             {userRole === 'admin' && (
-              <Route path="/admin-panel" element={<AdminPanel />} />
+              <Route path="/panel-administratora" element={<AdminPanel />} />
             )}
+            {userCards.map(card => (
+              <Route
+                key={card.id}
+                path={`/${card.name.toLowerCase().replace(/\s/g, '-')}`}
+                element={<div>Treść dla "{card.name}"</div>}
+              />
+            ))}
           </Routes>
         </div>
       </div>
